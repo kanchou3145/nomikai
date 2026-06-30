@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>飲み会 日程調整</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    .header p  { font-size: 0.95rem; opacity: 0.9; }
+
+    .body { padding: 30px; }
+
+    /* 名前選択 */
+    .section-title {
+      font-size: 1rem;
+      font-weight: bold;
+      color: #444;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .name-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .name-btn {
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .name-btn:hover  { border-color: #764ba2; color: #764ba2; }
+    .name-btn.active { border-color: #764ba2; background: #764ba2; color: white; font-weight: bold; }
+
+    /* 日程テーブル */
+    .table-wrap { overflow-x: auto; margin-bottom: 30px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    thead th {
+      background: #f7f7f7;
+      padding: 10px 6px;
+      text-align: center;
+      font-weight: bold;
+      color: #555;
+      border: 1px solid #e0e0e0;
+      white-space: nowrap;
+    }
+
+    thead th.date-col { min-width: 110px; }
+
+    tbody td {
+      padding: 8px 6px;
+      text-align: center;
+      border: 1px solid #e0e0e0;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover { background: #fafafa; }
+
+    .date-label { font-weight: 600; color: #333; }
+    .day-label  { font-size: 0.75rem; color: #888; display: block; }
+
+    /* ◎○△× ボタン */
+    .ans-group { display: flex; justify-content: center; gap: 4px; }
+
+    .ans-btn {
+      width: 36px; height: 36px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.15s;
+      line-height: 1;
+    }
+
+    .ans-btn:hover { transform: scale(1.1); }
+
+    .ans-btn[data-val="◎"].selected { background: #4CAF50; border-color: #4CAF50; color: white; }
+    .ans-btn[data-val="○"].selected { background: #2196F3; border-color: #2196F3; color: white; }
+    .ans-btn[data-val="△"].selected { background: #FF9800; border-color: #FF9800; color: white; }
+    .ans-btn[data-val="×"].selected { background: #f44336; border-color: #f44336; color: white; }
+
+    /* 集計バー */
+    .summary-row td { background: #f9f9f9; }
+
+    .bar-wrap { width: 100%; background: #eee; border-radius: 4px; height: 8px; margin-top: 4px; }
+    .bar-fill  { height: 8px; border-radius: 4px; background: #4CAF50; transition: width 0.3s; }
+
+    .score-text { font-weight: bold; font-size: 0.85rem; color: #333; }
+
+    /* 凡例 */
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin-bottom: 24px; font-size: 0.82rem; color: #666;
+    }
+    .legend span { display: flex; align-items: center; gap: 4px; }
+
+    /* 送信ボタン */
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .submit-btn:hover { opacity: 0.88; }
+
+    /* 結果パネル */
+    #result-panel {
+      display: none;
+      margin-top: 30px;
+      padding: 20px;
+      background: #f0fff4;
+      border: 2px solid #4CAF50;
+      border-radius: 12px;
+    }
+
+    #result-panel h3 { color: #2e7d32; margin-bottom: 12px; }
+
+    .result-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 10px; }
+    .result-table th, .result-table td {
+      border: 1px solid #c8e6c9;
+      padding: 8px;
+      text-align: center;
+    }
+    .result-table th { background: #e8f5e9; font-weight: bold; }
+    .best-row { background: #fff9c4 !important; font-weight: bold; }
+
+    /* レスポンシブ */
+    @media (max-width: 500px) {
+      .name-grid { grid-template-columns: repeat(2, 1fr); }
+      .ans-btn { width: 30px; height: 30px; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🍻 今季お疲れ様飲み会</h1>
+    <p>7月の日程調整にご協力ください（部署内 6名）</p>
+  </div>
+
+  <div class="body">
+
+    <!-- STEP1: 名前 -->
+    <p class="section-title">① お名前を選んでください</p>
+    <div class="name-grid" id="nameGrid">
+      <button class="name-btn" data-name="佐野">佐野</button>
+      <button class="name-btn" data-name="田中">田中</button>
+      <button class="name-btn" data-name="生井">生井</button>
+      <button class="name-btn" data-name="斎藤">斎藤</button>
+      <button class="name-btn" data-name="浮海">浮海</button>
+      <button class="name-btn" data-name="粂田">粂田</button>
+    </div>
+
+    <!-- STEP2: 日程 -->
+    <p class="section-title">② 各日程の参加可否をお知らせください</p>
+
+    <div class="legend">
+      <span>🟢 <b>◎</b> 絶対参加できる</span>
+      <span>🔵 <b>○</b> 参加できる</span>
+      <span>🟠 <b>△</b> 微妙</span>
+      <span>🔴 <b>×</b> 参加できない</span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="scheduleTable">
+        <thead>
+          <tr>
+            <th class="date-col">日付</th>
+            <th>◎○△×</th>
+          </tr>
+        </thead>
+        <tbody id="dateRows"></tbody>
+        <tfoot>
+          <tr class="summary-row">
+            <td style="font-weight:bold; text-align:left; padding-left:8px;">📊 集計</td>
+            <td id="summaryCell">—</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <button class="submit-btn" onclick="submitAnswer()">✅ 回答を送信する</button>
+
+    <!-- 結果パネル -->
+    <div id="result-panel">
+      <h3>📋 現在の回答状況</h3>
+      <div id="result-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── 設定：7月の候補日（金・土・日を中心に） ──
+  const candidates = [
+    { date: "7/5(土)",  day: "土" },
+    { date: "7/6(日)",  day: "日" },
+    { date: "7/11(金)", day: "金" },
+    { date: "7/12(土)", day: "土" },
+    { date: "7/13(日)", day: "日" },
+    { date: "7/18(金)", day: "金" },
+    { date: "7/19(土)", day: "土" },
+    { date: "7/20(日)", day: "日" },
+    { date: "7/25(金)", day: "金" },
+    { date: "7/26(土)", day: "土" },
+  ];
+
+  const members = ["佐野","田中","生井","斎藤","浮海","粂田"];
+
+  // LocalStorageキー
+  const STORAGE_KEY = "nomikai_2025_07";
+
+  // 回答データ  { "佐野": {"7/5(土)": "○", ...}, ... }
+  let allAnswers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+
+  let selectedName = null;
+  let currentAnswers = {}; // 今入力中の回答
+
+  // ── テーブル生成 ──
+  const tbody = document.getElementById("dateRows");
+  candidates.forEach(c => {
+    const tr = document.createElement("tr");
+
+    const tdDate = document.createElement("td");
+    tdDate.innerHTML = `<span class="date-label">${c.date}</span>
+                        <span class="day-label">${c.day}曜日</span>`;
+    tr.appendChild(tdDate);
+
+    const tdAns = document.createElement("td");
+    const grp = document.createElement("div");
+    grp.className = "ans-group";
+    grp.dataset.date = c.date;
+
+    ["◎","○","△","×"].forEach(v => {
+      const btn = document.createElement("button");
+      btn.className = "ans-btn";
+      btn.dataset.val = v;
+      btn.textContent = v;
+      btn.onclick = () => selectAnswer(c.date, v, grp);
+      grp.appendChild(btn);
+    });
+
+    tdAns.appendChild(grp);
+    tr.appendChild(tdAns);
+    tbody.appendChild(tr);
+  });
+
+  // ── 名前選択 ──
+  document.querySelectorAll(".name-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".name-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      selectedName = btn.dataset.name;
+      loadExistingAnswers();
+    };
+  });
+
+  function loadExistingAnswers() {
+    currentAnswers = allAnswers[selectedName] ? {...allAnswers[selectedName]} : {};
+    // ボタン反映
+    document.querySelectorAll(".ans-group").forEach(grp => {
+      const date = grp.dataset.date;
+      grp.querySelectorAll(".ans-btn").forEach(btn => {
+        btn.classList.toggle("selected", btn.dataset.val === currentAnswers[date]);
+      });
+    });
+    updateSummary();
+  }
+
+  // ── 回答選択 ──
+  function selectAnswer(date, val, grp) {
+    if (!selectedName) {
+      alert("先にお名前を選択してください！");
+      return;
+    }
+    currentAnswers[date] = val;
+    grp.querySelectorAll(".ans-btn").forEach(btn => {
+      btn.classList.toggle("selected", btn.dataset.val === val);
+    });
+    updateSummary();
+  }
+
+  // ── 集計表示（入力中リアルタイム） ──
+  function updateSummary() {
+    const cell = document.getElementById("summaryCell");
+    if (Object.keys(currentAnswers).length === 0) { cell.textContent = "—"; return; }
+    const answered = candidates.filter(c => currentAnswers[c.date] && currentAnswers[c.date] !== "×").length;
+    cell.innerHTML = `参加可能 <b>${answered}</b> / ${candidates.length} 日`;
+  }
+
+  // ── 送信 ──
+  function submitAnswer() {
+    if (!selectedName) { alert("お名前を選択してください！"); return; }
+    const unanswered = candidates.filter(c => !currentAnswers[c.date]);
+    if (unanswered.length > 0) {
+      alert(`以下の日程がまだ回答されていません：\n${unanswered.map(c=>c.date).join(" / ")}`);
+      return;
+    }
+
+    allAnswers[selectedName] = {...currentAnswers};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allAnswers));
+
+    showResult();
+    alert(`${selectedName}さんの回答を保存しました！\nありがとうございます🎉`);
+  }
+
+  // ── 結果表示 ──
+  function showResult() {
+    const panel = document.getElementById("result-panel");
+    const content = document.getElementById("result-content");
+    panel.style.display = "block";
+
+    // スコア計算（◎=3, ○=2, △=1, ×=0）
+    const scores = {};
+    const scoreMap = {"◎":3,"○":2,"△":1,"×":0};
+
+    candidates.forEach(c => {
+      let total = 0, responded = 0;
+      members.forEach(m => {
+        if (allAnswers[m] && allAnswers[m][c.date] !== undefined) {
+          total += scoreMap[allAnswers[m][c.date]] || 0;
+          responded++;
+        }
+      });
+      scores[c.date] = { total, responded };
+    });
+
+    const maxScore = Math.max(...Object.values(scores).map(s => s.total));
+
+    let html = `<p style="margin-bottom:10px; color:#555;">回答済み：<b>${Object.keys(allAnswers).length}</b> / ${members.length} 名</p>`;
+    html += `<table class="result-table"><thead><tr><th>日程</th>`;
+    members.forEach(m => html += `<th>${m}</th>`);
+    html += `<th>スコア</th><th>回答数</th></tr></thead><tbody>`;
+
+    candidates.forEach(c => {
+      const isBest = scores[c.date].total === maxScore && maxScore > 0;
+      html += `<tr class="${isBest ? 'best-row' : ''}">`;
+      html += `<td>${c.date}${isBest?" 👑":""}</td>`;
+      members.forEach(m => {
+        const ans = allAnswers[m]?.[c.date] || "—";
+        const colors = {"◎":"#4CAF50","○":"#2196F3","△":"#FF9800","×":"#f44336","—":"#bbb"};
+        html += `<td style="color:${colors[ans]};font-weight:bold;">${ans}</td>`;
+      });
+      html += `<td><b>${scores[c.date].total}</b></td>`;
+      html += `<td>${scores[c.date].responded}名</td>`;
+      html += `</tr>`;
+    });
+
+    html += `</tbody></table>`;
+    content.innerHTML = html;
+
+    panel.scrollIntoView({ behavior: "smooth" });
+  }
+</script>
+</body>
+</html>
